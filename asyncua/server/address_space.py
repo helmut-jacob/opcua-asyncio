@@ -47,14 +47,14 @@ class AttributeService:
         self._aspace: "AddressSpace" = aspace
 
     def read(self, params):
-        self.logger.debug("read %s", params)
+        #self.logger.debug("read %s", params)
         res = []
         for readvalue in params.NodesToRead:
             res.append(self._aspace.get_attribute_value(readvalue.NodeId, readvalue.AttributeId))
         return res
 
     def write(self, params, user=User.Admin):
-        self.logger.debug("write %s as user %s", params, user)
+        #self.logger.debug("write %s as user %s", params, user)
         res = []
         for writevalue in params.NodesToWrite:
             if user != User.Admin:
@@ -79,7 +79,7 @@ class ViewService(object):
         self._aspace: "AddressSpace" = aspace
 
     def browse(self, params):
-        self.logger.debug("browse %s", params)
+        #self.logger.debug("browse %s", params)
         res = []
         for desc in params.NodesToBrowse:
             res.append(self._browse(desc))
@@ -99,15 +99,15 @@ class ViewService(object):
 
     def _is_suitable_ref(self, desc, ref):
         if not self._suitable_direction(desc.BrowseDirection, ref.IsForward):
-            self.logger.debug("%s is not suitable due to direction", ref)
+            #self.logger.debug("%s is not suitable due to direction", ref)
             return False
         if not self._suitable_reftype(desc.ReferenceTypeId, ref.ReferenceTypeId, desc.IncludeSubtypes):
-            self.logger.debug("%s is not suitable due to type", ref)
+            #self.logger.debug("%s is not suitable due to type", ref)
             return False
         if desc.NodeClassMask and ((desc.NodeClassMask & ref.NodeClass) == 0):
-            self.logger.debug("%s is not suitable due to class", ref)
+            #self.logger.debug("%s is not suitable due to class", ref)
             return False
-        self.logger.debug("%s is a suitable ref for desc %s", ref, desc)
+        #self.logger.debug("%s is a suitable ref for desc %s", ref, desc)
         return True
 
     def _suitable_reftype(self, ref1, ref2, subtypes):
@@ -146,14 +146,14 @@ class ViewService(object):
         return False
 
     def translate_browsepaths_to_nodeids(self, browsepaths):
-        self.logger.debug("translate browsepath: %s", browsepaths)
+        #self.logger.debug("translate browsepath: %s", browsepaths)
         results = []
         for path in browsepaths:
             results.append(self._translate_browsepath_to_nodeid(path))
         return results
 
     def _translate_browsepath_to_nodeid(self, path):
-        self.logger.debug("looking at path: %s", path)
+        #self.logger.debug("looking at path: %s", path)
         res = ua.BrowsePathResult()
         if path.StartingNode not in self._aspace:
             res.StatusCode = ua.StatusCode(ua.StatusCodes.BadNodeIdInvalid)
@@ -200,7 +200,7 @@ class NodeManagementService:
                 yield item
 
     def _add_node(self, item, user, check=True):
-        self.logger.debug("Adding node %s %s", item.RequestedNewNodeId, item.BrowseName)
+        #self.logger.debug("Adding node %s %s", item.RequestedNewNodeId, item.BrowseName)
         result = ua.AddNodesResult()
 
         if not user == User.Admin:
@@ -211,7 +211,7 @@ class NodeManagementService:
             # If Identifier of requested NodeId is null we generate a new NodeId using
             # the namespace of the nodeid, this is an extention of the spec to allow
             # to requests the server to generate a new nodeid in a specified namespace
-            self.logger.debug("RequestedNewNodeId has null identifier, generating Identifier")
+            #self.logger.debug("RequestedNewNodeId has null identifier, generating Identifier")
             item.RequestedNewNodeId = self._aspace.generate_nodeid(item.RequestedNewNodeId.NamespaceIndex)
         else:
             if item.RequestedNewNodeId in self._aspace:
@@ -466,6 +466,7 @@ class MethodService:
         return results
 
     async def _call(self, method):
+        self.logger.warning("Calling: %s", method)
         res = ua.CallMethodResult()
         if method.ObjectId not in self._aspace or method.MethodId not in self._aspace:
             res.StatusCode = ua.StatusCode(ua.StatusCodes.BadNodeIdInvalid)
@@ -492,8 +493,10 @@ class MethodService:
 
     async def _run_method(self, func, parent, *args):
         if asyncio.iscoroutine(func):
+            self.logger.warning("func %s is a coroutine, awaiting with args: %s", func, args)
             return await func(parent, *args)
         p = partial(func, parent, *args)
+        self.logger.warning("func %s is a sync function, awaiting in executor %s with args: %s", func, self._pool, args)
         res = await asyncio.get_event_loop().run_in_executor(self._pool, p)
         return res
 
